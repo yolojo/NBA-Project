@@ -1,0 +1,292 @@
+---
+title: "564 Project"
+author: "Taban Yolo"
+date: "11/20/2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library (magrittr, quietly = TRUE) 
+library (dplyr, quietly = TRUE)
+library (ROI, quietly = TRUE)
+library (ROI.plugin.glpk, quietly = TRUE)
+library (ompr, quietly = TRUE)
+library (ompr.roi, quietly = TRUE)
+library (pander, quietly = TRUE)
+library(Benchmarking, quietly=TRUE)
+library(rcompanion, quietly = TRUE)
+library(car)
+library(tidyverse)
+library(caret)
+library(leaps)
+```
+
+##NBA Project
+
+The data set we are going to explore in this Project is NBA Players Salary as our response variable (y) given a players individual stats as the predictor values. 
+
+Given this, the question we would like to answer is: Are a player individual stats predictive of their Salary?
+
+We will start by loading the data set into R and then fit the multiple linear regression model to fit the data.
+
+```{r}
+nbatable <- read.csv(file = "~/Desktop/PSU Grad School/STAT 564/NBA Project/NEW NBA.csv", header = TRUE)
+nbatable
+```
+
+
+```{r}
+y<-nbatable$SALARY
+y<-as.numeric(y)
+nbamodel <- lm(y ~ MIN + PTS + FG + X3P + FT + AST + BLK + STL + REB + TOV, data = nbatable)
+print(nbamodel)
+```
+
+The MLR model to fit the data in this case would be y = 40 - 0.124MIN + 1.29PTS - 0.10FG + 0.09X3P - 0.42FT + 3.68AST - 2.47BLK - 6.85STL + 1.29REB - 8.84TOV
+
+##Plotting the data
+
+Next, we would want to plot a scatter plot matrix in order to carry out simple data checking. 
+
+```{r}
+plot(nbatable[5:14])
+```
+
+From the plots above it appears that PTS, FG, STL, REB, AST and TOV seem to have some linear relationship but we can't for sure tell until we delve into the data. On the other hand, X3P and FT seem to have a non linear relationship but we can't for sure tell until we delve into the data.
+
+
+##Anova Summary
+
+With that said, we can also estimate the MLR mode with R 
+
+
+```{r}
+summary(nbamodel)
+```
+
+Looking at the summary, we can note that:
+
+1) We see that with an R squared of 39.71% that 39.71% of the variation in the in a player's salary is reduced taking into account all the predictive variables.
+
+2) Next, looking into the p values of the predictors, PTS (0.004), FT (0.010), AST (0.006), STL (0.049), REB (0.090) and TOV (0.028) is signifciantly different from 0 while MIN (0.795), FG (0.775), X3P (0.395), BLK (0.445) is not.
+
+3) Finally with a P value of the Anova F test (0.017), the model containing a players' individual stats is more useful in predicting his salary than not.
+
+However, given this, we still have to find out what our best model is.
+
+##General Linear F test
+
+In order to find out what our best model is, we are going to come up with a hypothesis test for testing all the slope parameters are 0. But before we do that, we have to perform a general linear F test and Stepwise test. 
+
+To begin with, we are going to define our larger full model which is the model with all the predictors. Then, we will define a smaller model (Less predictors) and then finally we will use the F stat to either accept or reject the smaller reduced model in favor the large model.
+
+We are going to start by fitting the full model of data and then determine the SSE.
+
+```{r}
+anova(nbamodel)
+```
+
+
+From the ANOVA table above, we can determine that the SSE of the full model is 1152.9
+
+Next, we will fit a reduced model of data and then determine the SSE. By just looking at the ANOVA table above, I will remove predictors with SSR of less than 100 just because they are not signficant enough. Therefore the predictors I am going to use are PTS, FT, AST, BLK, STL and TOV.
+
+
+```{r}
+nbamodelred <- lm(y ~ PTS + FT + AST + BLK + STL + TOV, data = nbatable)
+anova(nbamodelred)
+```
+
+
+From the ANOVA table above, we can determine that the SSE of the reduced model is 1813.3. The SSE of the reduced model is greater than the SSE of the full model therefore I would be inclined to reject using the reduced model and sticking with the full model.
+
+Therefore given this, it would make sense for us to use the reduced model because the variation around the estimated full model regression function is almost as large as the variation around the estimated reduced model regression function.
+
+We can also cross check this by performing a step wise model evaluation and see if this corresponds accordingly.
+
+
+```{r}
+best <- step(nbamodel, direction = "both")
+```
+
+
+Next, we will look at the remaining predictors and see if any warrant investigation based off of corelation.
+
+```{r}
+vifred <- vif(nbamodelred)
+vifred
+```
+
+Looking, at the VIF, the only variable that would warrant further investigation would be TOV since its greater than 4, however since its less than 10, I will still keep it in my model.
+
+
+##Sequential Sum of Squares 
+
+Moving on with the reduced model, we are going to try and find out the sequential sum of squares of the reduced model.
+
+The Sequential sum of squares can be thought of as:
+
+i) The reduction in the error sum of squares (SSE) when one or more predictor variables are added to the model.
+
+ii) The increase in the regression sum of squares (SSR) when one or more predictor variables are added to the model.
+
+First, we are going to find the sequential sum by adding Brain to the model that already contains Height. 
+
+But before that, I want to see how much of the model will be explained by Height, if I have it as the only predictor. Thus I will determine it as shown below:
+
+```{r}
+anova(lm(y ~ PTS, data = nbatable))
+```
+
+Looking at the table above, with an SSR of 186, we can conclude that a large majority of the model with PTS as the only predictor will be explained by Error. 
+
+Let's add AST to the model and see if the SSR or SSE changes. We can denote this by:
+
+SSR (AST | PTS)
+
+```{r}
+anova(lm(y ~ AST * PTS, data = nbatable))
+```
+
+```{r}
+anova(lm(y ~ PTS * AST, data = nbatable))
+```
+
+```{r}
+anova(lm(y ~ PTS * AST * FT, data = nbatable))
+```
+
+
+##Influential Points
+
+If an observation has a response value that is very different from the predicted value based on a model, then that observation is called an outlier. On the other hand, if an observation has a particularly unusual combination of predictor values (e.g., one predictor has a very different value for that observation compared with all the other data observations), then that observation is said to have high leverage.
+
+I can do furthur analysis to investigate whether or not this point is influential or not.
+
+```{r}
+res_nbamodel <- nbamodelred$residuals
+est <- summary(nbamodelred)
+#names(est)
+MSres <- est$sigma
+standard_residuals <-residuals(nbamodelred)/MSres
+hatvalues_matrix <- hatvalues(nbamodelred)
+hat2  <-1-hatvalues(nbamodelred)
+r_std <- rstandard(nbamodelred)
+r_stud <- rstudent(nbamodelred)
+res_press <-residuals(nbamodelred)/hat2
+res_press_sq<-res_press^2
+ 
+Residual_Delivery<-round(cbind(residuals(nbamodelred),residuals(nbamodelred)/MSres,rstandard(nbamodelred),hatvalues(nbamodelred),residuals(nbamodelred)/hat2,rstudent(nbamodelred),res_press^2),4)
+ 
+model_fit <- nbamodelred$fitted.values
+ 
+Residual_Delivery <- cbind(model_fit,Residual_Delivery)
+colnames(Residual_Delivery)<-c("fitted val","residuals","stand_resid","rstand","hat","PRESS","rstudent","Press_Squared")
+pander(Residual_Delivery, split.table = Inf, caption ="Matrix with all the types of residual errors")
+```
+
+```{r}
+infnbamodel <- influence.measures(nbamodelred)
+pander(infnbamodel$infmat)
+pander(infnbamodel$is.inf)
+summary(infnbamodel)
+```
+
+
+
+```{r}
+plot(nbamodelred, which = c(4))
+```
+
+
+```{r}
+nbacooks <- rev(sort(round(cooks.distance(nbamodelred), 5)))
+nbacooks
+```
+
+From the Cook's distance analysis from above, point 5 which is our highest point with 0.43548 is worthy of investigation but since its below 0.5, it is still not an influential point.
+
+
+
+
+##Hypothesis Testing 
+
+So to this point, we have come up with our reduced model, now we are going to test the hypothesis that all the slope parameters are equal to 0. Thus, our null and alternative hypothesis can be seen below:
+
+H0: B1 = B2 = B3 = B4 = B5 = B6 = 0
+
+HA: Bi (for i = 1,2,3,4,5,6) ≠ 0
+
+To test the null hypothesis, we just use the overall F-test and P-value reported in the analysis of variance table:
+
+```{r}
+summary(nbamodelred)
+```
+
+With a P value of 0.005033, There is sufficient evidence with an F value of 3.661 to conclude that at least one of the slope parameters is not equal to 0. Thus we can reject the null hypothesis and go with the alternative.
+
+
+##Residual Plotting
+
+In order to assess the model assumptions, we can carry out the following:
+
+1. Create a scatterplot with the residuals on the vertical axis and the fitted values on the horizontal axis.
+
+2. Then, we will create a series of scatterplots with the residuals on the vertical axis and each of the predictors in the model on the horizontal axes.
+
+3. Next, we will create a normal probabilty of the residuals to check for approximate normality.
+
+4. Finally, we will create a series of scatterplots with the residuals on the vertical axis and each of the predictors in the model on the horizontal axes for any predictors we omitted from the model.
+
+We are perfomring all these to assess whether our predictors have a strong linear relationship with the model.
+
+```{r}
+plot(fitted(nbamodelred), rstudent(nbamodelred), main = "Residual vs Fits")
+```
+
+Looking at the Residual vs Fits plot, the variaiton of the residuals seem to constant along 0 and we really don’t have any significant outliers from the plot.
+
+```{r}
+plot(nbatable$PTS, rstudent(nbamodelred), main = "Residuals vs PTS", xlab = "PTS"
+, ylab = "Residuals")
+```
+
+
+```{r}
+plot(nbatable$FT, rstudent(nbamodelred), main = "Residuals vs FT", xlab = "FT"
+, ylab = "Residuals")
+```
+
+```{r}
+plot(nbatable$AST, rstudent(nbamodelred), main = "Residuals vs AST", xlab = "AST"
+, ylab = "Residuals")
+```
+
+```{r}
+plot(nbatable$BLK, rstudent(nbamodelred), main = "Residuals vs BLK", xlab = "BLK"
+, ylab = "Residuals")
+```
+
+```{r}
+plot(nbatable$STL, rstudent(nbamodelred), main = "Residuals vs STL", xlab = "STL"
+, ylab = "Residuals")
+```
+
+```{r}
+plot(nbatable$TOV, rstudent(nbamodelred), main = "Residuals vs TOV", xlab = "TOV"
+, ylab = "Residuals")
+```
+
+
+
+```{r}
+plot(nbamodelred)
+```
+
+From the Normality Probability plot, we can assume the residuals are normaly distributed.
+
+
+
