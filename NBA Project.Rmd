@@ -1,10 +1,12 @@
 ---
-title: "564 Project"
+title: "Show Me The Money: NBA Contracts"
 author: "Taban Yolo"
 date: "11/20/2018"
 output:
   html_document:
     df_print: paged
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -33,7 +35,7 @@ Given this, the question we would like to answer is: Are a player individual sta
 We will start by loading the data set into R and then fit the multiple linear regression model to fit the data.
 
 ```{r}
-nbatable <- read.csv(file = "~/Desktop/PSU Grad School/STAT 564/NBA Project/NEW NBA.csv", header = TRUE)
+nbatable <- read.csv(file = "~/Desktop/Back up/Desktop/PSU Grad School/STAT 564/NBA Project/NBA-Project/NEW NBA.csv", header = TRUE)
 nbatable
 ```
 
@@ -286,7 +288,7 @@ plot(nbatable$TOV, rstudent(nbamodelred), main = "Residuals vs TOV", xlab = "TOV
 plot(nbamodelred)
 ```
 
-From the Normality Probability plot, we can assume the residuals are normaly distributed.
+From the Normality Probability plot, we can assume the residuals are normally distributed.
 
 
 
