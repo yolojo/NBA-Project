@@ -4,4 +4,4 @@ Every off season NBA Unrestricted and Restricted free agents usually extend thei
 
 In this project, I will be using Simple and Multivariate Linear regression to carry out my Hypothesis Testing.
 
-A clean read up of the code can be found by downloading the PDF File.
+A clean read up of the code can be found by downloading the PDF File >> "Show Me The Money"
